@@ -564,6 +564,16 @@ class ActiveRecord::Base
             child.public_send("#{type}=", model.class.name)
           end
         end
+
+        # Wait until all the child's foreign_keys are populated before writing the model
+        changed_objects.select! do |child|
+          belongs_to_assocs = child.class.reflect_on_all_associations(:belongs_to)
+          foreign_keys      = belongs_to_assocs.map(&:association_foreign_key)
+          foreign_keys      = foreign_keys - ["trip_invitation_id"] # Hackity hack, hack, hack
+
+          foreign_keys.map { |k| child.send(k) }.all?(&:present?)
+        end
+
         associated_objects_by_class[model.class.name][association_reflection.name].concat changed_objects
       end
       associated_objects_by_class

@@ -542,9 +542,11 @@ class ActiveRecord::Base
     def find_associated_objects_for_import(associated_objects_by_class, model)
       associated_objects_by_class[model.class.name] ||= {}
 
-      association_reflections =
-        model.class.reflect_on_all_associations(:has_one) +
-        model.class.reflect_on_all_associations(:has_many)
+      # Preserve the order of the associations
+      association_reflections = model.class.reflect_on_all_associations.select do |assoc|
+        [:has_one, :has_many].include?(assoc.macro)
+      end
+
       association_reflections.each do |association_reflection|
         associated_objects_by_class[model.class.name][association_reflection.name] ||= []
 

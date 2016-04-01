@@ -558,10 +558,15 @@ class ActiveRecord::Base
 
         changed_objects = association.select { |a| a.new_record? || a.changed? }
         changed_objects.each do |child|
-          child.public_send("#{association_reflection.foreign_key}=", model.id)
+          if child.respond_to?("#{association_reflection.foreign_key}=")
+            child.public_send("#{association_reflection.foreign_key}=", model.id)
+          end
+
           # For polymorphic associations
           association_reflection.type.try do |type|
-            child.public_send("#{type}=", model.class.name)
+            if child.respond_to?("#{type}=")
+              child.public_send("#{type}=", model.class.name)
+            end
           end
         end
 
@@ -571,7 +576,9 @@ class ActiveRecord::Base
           foreign_keys      = belongs_to_assocs.map(&:association_foreign_key)
           foreign_keys      = foreign_keys - ["trip_invitation_id"] # Hackity hack, hack, hack
 
-          foreign_keys.map { |k| child.send(k) }.all?(&:present?)
+          foreign_keys.select { |k| child.respond_to?("#{k}") }
+                      .map { |k| child.send(k) }
+                      .all?(&:present?)
         end
 
         associated_objects_by_class[model.class.name][association_reflection.name].concat changed_objects
